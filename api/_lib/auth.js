@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { createHmac, randomBytes } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 export const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -44,6 +44,6 @@ export function verifyOAuthState(state, nonce) {
   const expected = createHmac('sha256', process.env.OAUTH_STATE_SECRET)
     .update(`${userId}.${nonce}`)
     .digest('hex')
-  if (sig !== expected) throw new Error('State signature invalid')
+  if (!timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expected, 'hex'))) throw new Error('State signature invalid')
   return userId
 }
