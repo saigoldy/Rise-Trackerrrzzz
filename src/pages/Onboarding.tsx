@@ -46,7 +46,7 @@ export default function Onboarding() {
         <label style={{ fontSize: 11.5, color: '#64748B', display: 'block', marginBottom: 5 }}>Artist Name *</label>
         <input
           style={inputStyle}
-          placeholder="e.g. JuKatha"
+          placeholder="e.g. Risetrack"
           value={form.artist_name}
           onChange={e => setForm({ ...form, artist_name: e.target.value })}
         />

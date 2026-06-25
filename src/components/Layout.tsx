@@ -44,7 +44,7 @@ export default function Layout() {
               <Music size={16} color="#000" />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#F1F5F9', letterSpacing: 0.3 }}>JuKatha</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#F1F5F9', letterSpacing: 0.3 }}>Risetrack</div>
               <div style={{ fontSize: 10, color: '#64748B', letterSpacing: 0.5 }}>ARTIST DASHBOARD</div>
             </div>
           </div>
@@ -81,7 +81,7 @@ export default function Layout() {
         {/* Artist footer */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid #22223A' }}>
           <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>Artist</div>
-          <div style={{ fontWeight: 600, fontSize: 13.5, color: '#F1F5F9' }}>JuKatha (Jude)</div>
+          <div style={{ fontWeight: 600, fontSize: 13.5, color: '#F1F5F9' }}>Artist</div>
           <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Kampala, Uganda</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#1DB954', boxShadow: '0 0 6px #1DB95488' }} />

@@ -34,7 +34,7 @@ export default function SignIn() {
         padding: '40px 36px', width: '100%', maxWidth: 400,
       }}>
         <div style={{ marginBottom: 32, textAlign: 'center' }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: '#F5A623' }}>JuKatha</h1>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: '#F5A623' }}>Risetrack</h1>
           <p style={{ margin: '8px 0 0', fontSize: 14, color: '#64748B' }}>Artist Dashboard</p>
         </div>
 
