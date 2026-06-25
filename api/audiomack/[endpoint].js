@@ -1,5 +1,6 @@
-import { createHmac, randomBytes } from 'node:crypto'
 import { verifyUser, getPlatformCreds } from '../_lib/auth.js'
+import { fetchAudiomackStats } from '../_lib/platformFetch.js'
+import { createHmac, randomBytes } from 'node:crypto'
 
 function buildOAuth1Header(method, url, consumerKey, consumerSecret) {
   const nonce = randomBytes(16).toString('hex')
@@ -11,41 +12,25 @@ function buildOAuth1Header(method, url, consumerKey, consumerSecret) {
     oauth_timestamp: ts,
     oauth_version: '1.0',
   }
-  const paramStr = Object.entries(params).sort().map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')
+  const paramStr = Object.entries(params).sort()
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')
   const base = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(paramStr)}`
-  const sigKey = `${encodeURIComponent(consumerSecret)}&`
-  const sig = createHmac('sha1', sigKey).update(base).digest('base64')
+  const sig = createHmac('sha1', `${encodeURIComponent(consumerSecret)}&`).update(base).digest('base64')
   params.oauth_signature = sig
-  return 'OAuth ' + Object.entries(params).map(([k, v]) => `${encodeURIComponent(k)}="${encodeURIComponent(v)}"`).join(', ')
+  return 'OAuth ' + Object.entries(params)
+    .map(([k, v]) => `${encodeURIComponent(k)}="${encodeURIComponent(v)}"`).join(', ')
 }
 
-async function artistHandler(req, res, slug) {
-  const consumerKey = process.env.AUDIOMACK_CONSUMER_KEY
-  const consumerSecret = process.env.AUDIOMACK_CONSUMER_SECRET
-  const url = `https://api.audiomack.com/v1/artist/${slug}`
-  const auth = buildOAuth1Header('GET', url, consumerKey, consumerSecret)
-
-  const r = await fetch(url, { headers: { Authorization: auth } })
-  if (!r.ok) return res.status(r.status).json({ error: 'Audiomack API error' })
-
-  const d = await r.json()
-  res.json({
-    name: d.results?.name ?? slug,
-    plays: d.results?.plays ?? 0,
-    followers: d.results?.followers ?? 0,
-    thumbnail: d.results?.image ?? '',
-  })
+async function artistHandler(req, res, creds) {
+  const stats = await fetchAudiomackStats(creds)
+  res.json(stats)
 }
 
-async function songs(req, res, slug) {
-  const consumerKey = process.env.AUDIOMACK_CONSUMER_KEY
-  const consumerSecret = process.env.AUDIOMACK_CONSUMER_SECRET
-  const url = `https://api.audiomack.com/v1/artist/${slug}/songs`
-  const auth = buildOAuth1Header('GET', url, consumerKey, consumerSecret)
-
+async function songs(req, res, creds) {
+  const url = `https://api.audiomack.com/v1/artist/${creds.slug}/songs`
+  const auth = buildOAuth1Header('GET', url, creds.consumer_key, creds.consumer_secret)
   const r = await fetch(url, { headers: { Authorization: auth } })
   if (!r.ok) return res.status(r.status).json({ error: 'Audiomack API error' })
-
   const d = await r.json()
   res.json((d.results ?? []).slice(0, 10).map(s => ({
     id: s.id,
@@ -62,11 +47,10 @@ export default async function handler(req, res) {
     const user = await verifyUser(req)
     const creds = await getPlatformCreds(user.id, 'audiomack')
     const { endpoint } = req.query
-
-    if (endpoint === 'artist') return artistHandler(req, res, creds.slug)
-    if (endpoint === 'songs')  return songs(req, res, creds.slug)
+    if (endpoint === 'artist') return await artistHandler(req, res, creds)
+    if (endpoint === 'songs')  return await songs(req, res, creds)
     res.status(404).json({ error: 'Unknown endpoint' })
   } catch (err) {
-    res.status(401).json({ error: err.message })
+    res.status(err.message?.includes('No audiomack') ? 404 : 401).json({ error: err.message })
   }
 }

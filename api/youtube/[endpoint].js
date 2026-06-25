@@ -1,37 +1,19 @@
 import { verifyUser, getPlatformCreds } from '../_lib/auth.js'
+import { fetchYouTubeStats } from '../_lib/platformFetch.js'
 
 async function channel(req, res, creds) {
-  const url = new URL('https://www.googleapis.com/youtube/v3/channels')
-  url.searchParams.set('part', 'snippet,statistics')
-  url.searchParams.set('id', creds.channel_id)
-  url.searchParams.set('key', process.env.YOUTUBE_API_KEY)
-
-  const r = await fetch(url.toString())
-  if (!r.ok) return res.status(r.status).json({ error: 'YouTube API error' })
-
-  const d = await r.json()
-  const ch = d.items?.[0]
-  if (!ch) return res.status(404).json({ error: 'Channel not found' })
-
-  res.json({
-    name: ch.snippet.title,
-    subscribers: Number(ch.statistics.subscriberCount),
-    totalViews: Number(ch.statistics.viewCount),
-    videoCount: Number(ch.statistics.videoCount),
-    thumbnail: ch.snippet.thumbnails?.default?.url ?? '',
-  })
+  const stats = await fetchYouTubeStats(creds)
+  res.json(stats)
 }
 
 async function videos(req, res, creds) {
-  const key = process.env.YOUTUBE_API_KEY
-
   const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search')
   searchUrl.searchParams.set('part', 'id')
   searchUrl.searchParams.set('channelId', creds.channel_id)
   searchUrl.searchParams.set('maxResults', '10')
   searchUrl.searchParams.set('order', 'date')
   searchUrl.searchParams.set('type', 'video')
-  searchUrl.searchParams.set('key', key)
+  searchUrl.searchParams.set('key', creds.api_key)
 
   const searchRes = await fetch(searchUrl.toString())
   if (!searchRes.ok) return res.status(searchRes.status).json({ error: 'YouTube search error' })
@@ -43,7 +25,7 @@ async function videos(req, res, creds) {
   const statsUrl = new URL('https://www.googleapis.com/youtube/v3/videos')
   statsUrl.searchParams.set('part', 'snippet,statistics')
   statsUrl.searchParams.set('id', ids)
-  statsUrl.searchParams.set('key', key)
+  statsUrl.searchParams.set('key', creds.api_key)
 
   const statsRes = await fetch(statsUrl.toString())
   const statsData = await statsRes.json()
@@ -64,11 +46,10 @@ export default async function handler(req, res) {
     const user = await verifyUser(req)
     const creds = await getPlatformCreds(user.id, 'youtube')
     const { endpoint } = req.query
-
-    if (endpoint === 'channel') return channel(req, res, creds)
-    if (endpoint === 'videos')  return videos(req, res, creds)
+    if (endpoint === 'channel') return await channel(req, res, creds)
+    if (endpoint === 'videos')  return await videos(req, res, creds)
     res.status(404).json({ error: 'Unknown endpoint' })
   } catch (err) {
-    res.status(401).json({ error: err.message })
+    res.status(err.message?.includes('No youtube') ? 404 : 401).json({ error: err.message })
   }
 }
