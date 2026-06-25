@@ -33,8 +33,8 @@ export default async function handler(req, res) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,platform' })
 
-    res.setHeader('Set-Cookie', 'ig_nonce=; HttpOnly; Path=/; Max-Age=0')
-    res.redirect(`${protocol}://${host.replace('3001', '5173')}/connections?connected=instagram`)
+    res.setHeader('Set-Cookie', 'ig_nonce=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax')
+    res.redirect(`${protocol}://${host.replace(':3001', ':5173')}/connections?connected=instagram`)
   } catch (err) {
     res.status(400).json({ error: err.message })
   }

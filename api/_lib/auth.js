@@ -9,8 +9,8 @@ export const supabaseAdmin = createClient(
 
 export async function verifyUser(req) {
   const auth = req.headers['authorization'] ?? ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
-  if (!token) throw new Error('Missing Authorization header')
+  const token = (auth.startsWith('Bearer ') ? auth.slice(7) : null) ?? req.query?.token ?? null
+  if (!token) throw new Error('Missing token')
 
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
   if (error || !user) throw new Error('Invalid or expired token')
