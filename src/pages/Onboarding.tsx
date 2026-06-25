@@ -102,7 +102,8 @@ export default function Onboarding() {
 
   const finish = async () => {
     setFinishing(true)
-    await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', user!.id)
+    const { error } = await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', user!.id)
+    if (error) { setFinishing(false); return }
     await refreshOnboardingStatus()
     navigate('/', { replace: true })
   }
