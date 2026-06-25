@@ -1,33 +1,53 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { TrendingUp, TrendingDown, ChevronRight, CheckCircle2, Circle, AlertTriangle, Zap, Info } from 'lucide-react'
+import { TrendingUp, TrendingDown, ChevronRight, CheckCircle2, Circle } from 'lucide-react'
 import MomentumGauge from '../components/MomentumGauge'
-import { platformMetrics, weeklyData, topSuggestions, dailySlate, momentumScore } from '../data/mockData'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+import { useLivePlatformMetrics } from '../hooks/useLiveData'
 
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n)
 
-const urgencyColor: Record<string, string> = {
-  urgent: '#EF4444',
-  high: '#F97316',
-  medium: '#F5A623',
-  low: '#3B82F6',
-}
-
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const { metrics: platformMetrics, sync } = useLivePlatformMetrics()
+  const [slate, setSlate] = useState({
+    gym: false, salonDuty: false, study: false, contentPosted: false, verseWritten: false,
+  })
+
+  useEffect(() => { sync() }, [sync])
+
+  useEffect(() => {
+    if (!user) return
+    const today = new Date().toISOString().split('T')[0]
+    supabase.from('daily_slate').select('*').eq('user_id', user.id).eq('date', today).single()
+      .then(({ data }) => {
+        if (data) setSlate({
+          gym: data.gym,
+          salonDuty: data.salon_duty,
+          study: data.study,
+          contentPosted: data.content_posted,
+          verseWritten: data.verse_written,
+        })
+      })
+  }, [user])
+
+  const doneCount = Object.values(slate).filter(Boolean).length
+  const momentumScore = Math.round((doneCount / 5) * 100)
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
 
   const slateItems = [
-    { key: 'gym', label: 'Gym Session', done: dailySlate.gym },
-    { key: 'salon', label: 'Salon Duty', done: dailySlate.salonDuty },
-    { key: 'study', label: 'Study Block', done: dailySlate.study },
-    { key: 'content', label: 'Content Posted', done: dailySlate.contentPosted },
-    { key: 'verse', label: 'Verse Written', done: dailySlate.verseWritten },
+    { key: 'gym', label: 'Gym Session', done: slate.gym },
+    { key: 'salon', label: 'Salon Duty', done: slate.salonDuty },
+    { key: 'study', label: 'Study Block', done: slate.study },
+    { key: 'content', label: 'Content Posted', done: slate.contentPosted },
+    { key: 'verse', label: 'Verse Written', done: slate.verseWritten },
   ]
-  const doneCount = slateItems.filter(s => s.done).length
 
   return (
     <div style={{ padding: '28px 28px 48px', color: '#F1F5F9', maxWidth: 1380 }}>
@@ -138,7 +158,7 @@ export default function Dashboard() {
         <div style={{ background: '#1A1A27', border: '1px solid #22223A', borderRadius: 12, padding: '22px' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 18 }}>7-Day Follower Growth</div>
           <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={weeklyData} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+            <LineChart data={[]} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#22223A" />
               <XAxis dataKey="day" stroke="#475569" tick={{ fontSize: 11, fill: '#64748B' }} />
               <YAxis stroke="#475569" tick={{ fontSize: 11, fill: '#64748B' }} />
@@ -181,33 +201,8 @@ export default function Dashboard() {
               All <ChevronRight size={12} />
             </button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {topSuggestions.map(s => {
-              const color = urgencyColor[s.urgency]
-              return (
-                <div key={s.id} style={{
-                  padding: '12px 13px', borderRadius: 8,
-                  background: `${color}10`,
-                  border: `1px solid ${color}28`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                    {s.urgency === 'urgent'
-                      ? <AlertTriangle size={11} color={color} />
-                      : s.urgency === 'high'
-                      ? <Zap size={11} color={color} />
-                      : <Info size={11} color={color} />
-                    }
-                    <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                      {s.urgency}
-                    </span>
-                    <span style={{ fontSize: 10, color: '#475569', marginLeft: 'auto' }}>{s.platform}</span>
-                  </div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: '#F1F5F9', lineHeight: 1.4 }}>
-                    {s.title}
-                  </div>
-                </div>
-              )
-            })}
+          <div style={{ fontSize: 13, color: '#64748B', padding: '20px 0', textAlign: 'center' }}>
+            Based on your activity — visit Suggestions for personalized tips.
           </div>
           <button onClick={() => navigate('/suggestions')} style={{
             marginTop: 12, width: '100%', padding: 9, borderRadius: 8,
