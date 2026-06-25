@@ -1,7 +1,23 @@
 import { useState, useCallback, useEffect } from 'react'
 import { CheckCircle2, Clock, XCircle, Music2, Copy, ChevronDown, ChevronUp, DollarSign, Plus, X } from 'lucide-react'
-import { payoutHistory, platformRates } from '../data/mockData'
 import { supabase } from '../lib/supabase'
+
+const payoutHistory = [
+  { id: 1, date: 'Feb 28, 2026', amount: 2.85, method: 'Bank Transfer', status: 'paid', period: 'Jan 2026' },
+  { id: 2, date: 'Mar 31, 2026', amount: 3.40, method: 'Bank Transfer', status: 'paid', period: 'Feb 2026' },
+  { id: 3, date: 'Apr 30, 2026', amount: 4.20, method: 'Bank Transfer', status: 'paid', period: 'Mar 2026' },
+  { id: 4, date: 'May 31, 2026', amount: 5.16, method: 'Bank Transfer', status: 'pending', period: 'Apr 2026' },
+]
+
+const platformRates: Record<string, number> = {
+  'Spotify': 0.004,
+  'Apple Music': 0.007,
+  'Audiomack': 0.0004,
+  'YouTube Music': 0.001,
+  'Boomplay': 0.0003,
+  'Tidal': 0.0125,
+  'Amazon Music': 0.004,
+}
 import { useAuth } from '../context/AuthContext'
 
 // ── Types ──────────────────────────────────────────────────────────────────────

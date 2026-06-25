@@ -1,10 +1,26 @@
 import { useState, useEffect } from 'react'
 import { AlertTriangle, Zap, Info, Minus, TrendingUp, Users } from 'lucide-react'
-import { trendRadar, collabRadar } from '../data/mockData'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLivePlatformMetrics } from '../hooks/useLiveData'
-import type { PlatformMetric } from '../data/mockData'
+import type { PlatformMetric } from '../hooks/useLiveData'
+
+const trendRadar = [
+  { name: 'Amapiano-Afro Fusion', momentum: 94, region: 'East Africa', type: 'Sound' },
+  { name: 'Bongo Flava Remix Wave', momentum: 87, region: 'Tanzania/Kenya', type: 'Style' },
+  { name: 'Afrobeats Drill Crossover', momentum: 79, region: 'Pan-African', type: 'Genre' },
+  { name: '#KampalaSoundChallenge', momentum: 73, region: 'Uganda', type: 'Challenge' },
+  { name: 'Acoustic Afro (stripped)', momentum: 68, region: 'Diaspora', type: 'Style' },
+  { name: 'Street Gospel Vibes', momentum: 61, region: 'Uganda/Rwanda', type: 'Genre' },
+]
+
+const collabRadar = [
+  { name: 'B2C', country: 'Uganda', genre: 'Urban Afrobeats', followers: '420K', compatibility: 88 },
+  { name: 'Feffe Bussi', country: 'Uganda', genre: 'Hip-Hop/Afro', followers: '280K', compatibility: 82 },
+  { name: 'Eddy Kenzo', country: 'Uganda', genre: 'Afropop', followers: '850K', compatibility: 79 },
+  { name: 'Harmonize', country: 'Tanzania', genre: 'Bongo Flava', followers: '4.2M', compatibility: 65 },
+  { name: 'Khaligraph Jones', country: 'Kenya', genre: 'Afro-Hip-Hop', followers: '1.8M', compatibility: 58 },
+]
 
 type Urgency = 'urgent' | 'high' | 'medium' | 'low'
 

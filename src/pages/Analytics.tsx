@@ -3,7 +3,41 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { monthlyData, fanGeography, contentTypePerformance, platformMetrics } from '../data/mockData'
+import { useLivePlatformMetrics } from '../hooks/useLiveData'
+
+const seed = [0, 8, 4, 12, 6, -3, 9, 5, 14, 3, 7, 11, -2, 6, 10, 4, 8, 13, 2, 9, 5, 7, 11, 3, 8, 6, 12, 4, 9, 7]
+const monthlyData = seed.map((delta, i) => {
+  const d = new Date('2026-04-27')
+  d.setDate(d.getDate() + i)
+  return {
+    date: `${d.getMonth() + 1}/${d.getDate()}`,
+    tiktok: Math.round(700 + i * 5 + delta * 3),
+    youtube: Math.round(280 + i * 1.4 + delta),
+    spotify: Math.round(900 + i * 10 + delta * 4),
+    audiomack: Math.round(1600 + i * 17 + delta * 5),
+    instagram: Math.round(1200 + i * 8.5 + delta * 3),
+  }
+})
+
+const fanGeography = [
+  { country: 'Uganda', flag: '🇺🇬', listeners: 5400, percentage: 42 },
+  { country: 'Kenya', flag: '🇰🇪', listeners: 2600, percentage: 20 },
+  { country: 'Tanzania', flag: '🇹🇿', listeners: 1800, percentage: 14 },
+  { country: 'Nigeria', flag: '🇳🇬', listeners: 1300, percentage: 10 },
+  { country: 'Rwanda', flag: '🇷🇼', listeners: 650, percentage: 5 },
+  { country: 'USA', flag: '🇺🇸', listeners: 520, percentage: 4 },
+  { country: 'UK', flag: '🇬🇧', listeners: 390, percentage: 3 },
+  { country: 'Others', flag: '🌍', listeners: 260, percentage: 2 },
+]
+
+const contentTypePerformance = [
+  { type: 'Freestyle', avgViews: 9800, engagement: 8.2, posts: 3 },
+  { type: 'Cover', avgViews: 6150, engagement: 6.8, posts: 2 },
+  { type: 'BTS', avgViews: 3650, engagement: 9.1, posts: 2 },
+  { type: 'Original', avgViews: 4400, engagement: 7.4, posts: 1 },
+  { type: 'Vocal Clip', avgViews: 5600, engagement: 7.8, posts: 1 },
+  { type: 'Collab', avgViews: 6700, engagement: 8.5, posts: 1 },
+]
 
 type PlatformKey = 'tiktok' | 'youtube' | 'spotify' | 'audiomack' | 'instagram'
 
@@ -24,9 +58,10 @@ const metricLabels: Record<PlatformKey, string> = {
 }
 
 export default function Analytics() {
+  const { metrics: platformMetrics } = useLivePlatformMetrics()
   const [activePlatform, setActivePlatform] = useState<PlatformKey>('tiktok')
   const platform = platforms.find(p => p.key === activePlatform)!
-  const currentMetric = platformMetrics.find(p => p.name === platform.label)!
+  const currentMetric = platformMetrics.find(p => p.name === platform.label)
 
   return (
     <div style={{ padding: '28px 28px 48px', color: '#F1F5F9', maxWidth: 1380 }}>
@@ -63,15 +98,17 @@ export default function Analytics() {
             <div style={{ fontSize: 14, fontWeight: 600 }}>
               {platform.label} — {metricLabels[activePlatform]} (30 days)
             </div>
-            <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
-              Current: <span style={{ color: platform.color, fontWeight: 600 }}>
-                {currentMetric.primary.value.toLocaleString()}
-              </span>
-              &nbsp;·&nbsp;
-              <span style={{ color: currentMetric.primary.change >= 0 ? '#1DB954' : '#EF4444' }}>
-                {currentMetric.primary.change >= 0 ? '+' : ''}{currentMetric.primary.change} this week
-              </span>
-            </div>
+            {currentMetric && (
+              <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
+                Current: <span style={{ color: platform.color, fontWeight: 600 }}>
+                  {currentMetric.primary.value.toLocaleString()}
+                </span>
+                &nbsp;·&nbsp;
+                <span style={{ color: currentMetric.primary.change >= 0 ? '#1DB954' : '#EF4444' }}>
+                  {currentMetric.primary.change >= 0 ? '+' : ''}{currentMetric.primary.change} this week
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <ResponsiveContainer width="100%" height={260}>

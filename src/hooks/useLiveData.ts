@@ -1,7 +1,45 @@
 import { useState, useEffect, useCallback } from 'react'
-import { platformMetrics } from '../data/mockData'
-import type { PlatformMetric } from '../data/mockData'
 import { useAuth } from '../context/AuthContext'
+
+export interface PlatformMetric {
+  name: string
+  color: string
+  primary: { label: string; value: number; change: number }
+  secondary: { label: string; value: number; change: number; isPercent?: boolean }
+}
+
+const platformMetrics: PlatformMetric[] = [
+  {
+    name: 'TikTok',
+    color: '#FF0050',
+    primary: { label: 'Followers', value: 0, change: 0 },
+    secondary: { label: 'Views (7d)', value: 0, change: 0 },
+  },
+  {
+    name: 'YouTube',
+    color: '#FF0000',
+    primary: { label: 'Subscribers', value: 0, change: 0 },
+    secondary: { label: 'Views (7d)', value: 0, change: 0 },
+  },
+  {
+    name: 'Spotify',
+    color: '#1DB954',
+    primary: { label: 'Monthly Listeners', value: 0, change: 0 },
+    secondary: { label: 'Streams (7d)', value: 0, change: 0 },
+  },
+  {
+    name: 'Audiomack',
+    color: '#FF6B00',
+    primary: { label: 'Plays', value: 0, change: 0 },
+    secondary: { label: 'Followers', value: 0, change: 0 },
+  },
+  {
+    name: 'Instagram',
+    color: '#E1306C',
+    primary: { label: 'Followers', value: 0, change: 0 },
+    secondary: { label: 'Eng. Rate', value: 0, change: 0, isPercent: true },
+  },
+]
 
 const API = '/api'
 

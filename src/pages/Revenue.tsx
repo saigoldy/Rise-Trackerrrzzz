@@ -4,8 +4,24 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 import { DollarSign, TrendingUp, Info } from 'lucide-react'
-import { monthlyRevenue, streamRates } from '../data/mockData'
 import { supabase } from '../lib/supabase'
+
+const monthlyRevenue = [
+  { month: "Dec '25", total: 1.20 },
+  { month: "Jan '26", total: 2.10 },
+  { month: "Feb '26", total: 2.85 },
+  { month: "Mar '26", total: 3.40 },
+  { month: "Apr '26", total: 4.20 },
+  { month: "May '26", total: 5.16 },
+]
+
+const streamRates = [
+  { platform: 'Apple Music', rate: '$0.0070', color: '#FC3C44' },
+  { platform: 'Spotify', rate: '$0.0040', color: '#1DB954' },
+  { platform: 'YouTube Music', rate: '$0.0010', color: '#FF0000' },
+  { platform: 'Boomplay', rate: '$0.0003', color: '#E9326D' },
+  { platform: 'Audiomack', rate: '$0.0004', color: '#FF6B00' },
+]
 import { useAuth } from '../context/AuthContext'
 
 // USD per stream (industry averages)
