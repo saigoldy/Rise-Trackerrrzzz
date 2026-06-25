@@ -1,7 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Eye, Heart, Share2, MessageCircle, Plus, X } from 'lucide-react'
-import { contentPosts } from '../data/mockData'
-import type { ContentPost, ContentType } from '../data/mockData'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+
+type ContentType = 'freestyle' | 'cover' | 'original' | 'bts' | 'vocal-clip' | 'collab'
+
+interface ContentPost {
+  id: string
+  title: string
+  type: ContentType
+  platform: string
+  date: string
+  views: number
+  likes: number
+  shares: number
+  comments: number
+}
 
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n)
 
@@ -44,17 +58,30 @@ const filters: { key: Filter; label: string }[] = [
 ]
 
 export default function Content() {
+  const { user } = useAuth()
   const [filter, setFilter] = useState<Filter>('all')
   const [showForm, setShowForm] = useState(false)
-  const [posts, setPosts] = useState<ContentPost[]>(contentPosts)
+  const [posts, setPosts] = useState<ContentPost[]>([])
   const [form, setForm] = useState({ title: '', type: 'freestyle' as ContentType, platform: 'TikTok', date: '', views: '', likes: '', shares: '', comments: '' })
+
+  const load = useCallback(async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('content_posts')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false })
+    setPosts((data ?? []) as ContentPost[])
+  }, [user])
+
+  useEffect(() => { load() }, [load])
 
   const filtered = filter === 'all' ? posts : posts.filter(p => p.type === filter)
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.title || !form.date) return
-    const newPost: ContentPost = {
-      id: posts.length + 1,
+    await supabase.from('content_posts').insert({
+      user_id: user!.id,
       title: form.title,
       type: form.type,
       platform: form.platform,
@@ -63,10 +90,10 @@ export default function Content() {
       likes: Number(form.likes) || 0,
       shares: Number(form.shares) || 0,
       comments: Number(form.comments) || 0,
-    }
-    setPosts([newPost, ...posts])
+    })
     setForm({ title: '', type: 'freestyle', platform: 'TikTok', date: '', views: '', likes: '', shares: '', comments: '' })
     setShowForm(false)
+    await load()
   }
 
   const inputStyle = {
