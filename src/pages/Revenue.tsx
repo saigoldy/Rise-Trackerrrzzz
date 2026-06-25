@@ -1,20 +1,89 @@
+import { useState, useEffect, useCallback } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts'
-import { DollarSign, TrendingUp } from 'lucide-react'
-import { revenueByPlatform, monthlyRevenue, streamRates } from '../data/mockData'
+import { DollarSign, TrendingUp, Info } from 'lucide-react'
+import { monthlyRevenue, streamRates } from '../data/mockData'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
-const totalMonthly = revenueByPlatform.reduce((s, p) => s + p.monthly, 0)
+// USD per stream (industry averages)
+const RATES: Record<string, number> = {
+  spotify:   0.003,
+  audiomack: 0.0017,
+  youtube:   0.002,
+  tiktok:    0.00025,
+  instagram: 0,
+}
+
+// Platform display colours (matched by lowercase platform key)
+const PLATFORM_COLORS: Record<string, string> = {
+  spotify:   '#1DB954',
+  audiomack: '#FF6B00',
+  youtube:   '#FF0000',
+  tiktok:    '#FF0050',
+  instagram: '#E1306C',
+}
 
 const projections = [
-  { streams: '10K streams/mo', spotify: '$40', audiomack: '$4', note: 'Early traction' },
-  { streams: '50K streams/mo', spotify: '$200', audiomack: '$20', note: 'Regional presence' },
-  { streams: '250K streams/mo', spotify: '$1,000', audiomack: '$100', note: 'Pan-African reach' },
-  { streams: '1M streams/mo', spotify: '$4,000', audiomack: '$400', note: 'Mainstream tier' },
+  { streams: '10K streams/mo', spotify: '$30', audiomack: '$17', note: 'Early traction' },
+  { streams: '50K streams/mo', spotify: '$150', audiomack: '$85', note: 'Regional presence' },
+  { streams: '250K streams/mo', spotify: '$750', audiomack: '$425', note: 'Pan-African reach' },
+  { streams: '1M streams/mo', spotify: '$3,000', audiomack: '$1,700', note: 'Mainstream tier' },
 ]
 
 export default function Revenue() {
+  const { user } = useAuth()
+  const [rows, setRows] = useState<Array<{ platform: string; streams: number; title: string }>>([])
+  const [loading, setLoading] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+    const { data } = await supabase
+      .from('track_distribution')
+      .select('platform, streams, tracks(title)')
+      .order('streams', { ascending: false })
+    setRows(
+      (data ?? []).map(r => ({
+        platform: r.platform,
+        streams: r.streams,
+        title: (r.tracks as { title: string }).title,
+      }))
+    )
+    setLoading(false)
+  }, [user])
+
+  useEffect(() => { load() }, [load])
+
+  // Compute revenue per row
+  const revenueRows = rows.map(r => ({
+    ...r,
+    revenue: r.streams * (RATES[r.platform.toLowerCase()] ?? 0),
+  }))
+
+  // Aggregate by platform for the cards / pie chart
+  const platformTotals: Record<string, { streams: number; revenue: number }> = {}
+  for (const r of revenueRows) {
+    const key = r.platform.toLowerCase()
+    if (!platformTotals[key]) platformTotals[key] = { streams: 0, revenue: 0 }
+    platformTotals[key].streams += r.streams
+    platformTotals[key].revenue += r.revenue
+  }
+
+  const totalRevenue = revenueRows.reduce((sum, r) => sum + r.revenue, 0)
+
+  // Build platform card data from real rows (fallback to empty array if no data)
+  const platformCards = Object.entries(platformTotals).map(([key, agg]) => ({
+    name: key.charAt(0).toUpperCase() + key.slice(1),
+    key,
+    monthly: agg.revenue,
+    streams: agg.streams,
+    color: PLATFORM_COLORS[key] ?? '#64748B',
+    rate: RATES[key] ?? 0,
+  }))
+
   return (
     <div style={{ padding: '28px 28px 48px', color: '#F1F5F9', maxWidth: 1380 }}>
 
@@ -31,42 +100,67 @@ export default function Revenue() {
         }}>
           <DollarSign size={16} color="#1DB954" />
           <div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#1DB954' }}>${totalMonthly.toFixed(2)}</div>
-            <div style={{ fontSize: 11, color: '#64748B' }}>This month</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#1DB954' }}>
+              {loading ? '…' : `$${totalRevenue.toFixed(2)}`}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748B' }}>Total earned</div>
           </div>
         </div>
       </div>
 
-      {/* Platform cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 16 }}>
-        {revenueByPlatform.map(p => (
-          <div key={p.name} style={{
-            background: '#1A1A27', border: '1px solid #22223A', borderRadius: 12, padding: 16,
-            borderTop: `2px solid ${p.color}`,
-          }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: p.color, marginBottom: 10, letterSpacing: 0.3 }}>
-              {p.name}
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#F1F5F9' }}>
-              ${p.monthly.toFixed(2)}
-            </div>
-            <div style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>This month</div>
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #22223A', display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <div style={{ fontSize: 12, color: '#94A3B8' }}>
-                {p.units.toLocaleString()} {p.unitLabel}
-              </div>
-              <div style={{ fontSize: 11.5, color: '#64748B' }}>
-                ${p.perUnit}/unit
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* Data note */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', gap: 10,
+        background: 'rgba(245,166,35,0.07)', border: '1px solid rgba(245,166,35,0.2)',
+        borderRadius: 10, padding: '12px 16px', marginBottom: 20,
+      }}>
+        <Info size={14} color="#F5A623" style={{ marginTop: 1, flexShrink: 0 }} />
+        <p style={{ margin: 0, fontSize: 12.5, color: '#94A3B8', lineHeight: 1.6 }}>
+          Stream counts are entered manually from your distributor dashboard (DistroKid, TuneCore, etc.).
+          Revenue is estimated by multiplying those counts by industry-average per-stream rates.
+          Actual payouts depend on your distribution agreement, listener country, and subscription tier.
+        </p>
       </div>
+
+      {/* Platform cards — real data */}
+      {platformCards.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(platformCards.length, 5)}, 1fr)`, gap: 12, marginBottom: 16 }}>
+          {platformCards.map(p => (
+            <div key={p.key} style={{
+              background: '#1A1A27', border: '1px solid #22223A', borderRadius: 12, padding: 16,
+              borderTop: `2px solid ${p.color}`,
+            }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: p.color, marginBottom: 10, letterSpacing: 0.3 }}>
+                {p.name}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#F1F5F9' }}>
+                ${p.monthly.toFixed(2)}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>Estimated earnings</div>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #22223A', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ fontSize: 12, color: '#94A3B8' }}>
+                  {p.streams.toLocaleString()} streams
+                </div>
+                <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                  ${p.rate}/stream
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : !loading && (
+        <div style={{
+          background: '#1A1A27', border: '1px solid #22223A', borderRadius: 12, padding: '32px',
+          textAlign: 'center', marginBottom: 16, color: '#64748B', fontSize: 13,
+        }}>
+          No distribution data yet. Add tracks and log stream counts to see earnings here.
+        </div>
+      )}
 
       {/* Chart + Pie row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, marginBottom: 16 }}>
 
-        {/* Monthly trend */}
+        {/* Monthly trend (static/historical) */}
         <div style={{ background: '#1A1A27', border: '1px solid #22223A', borderRadius: 12, padding: '22px' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 18 }}>Monthly Revenue Trend</div>
           <ResponsiveContainer width="100%" height={220}>
@@ -91,43 +185,51 @@ export default function Revenue() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', background: 'rgba(29,185,84,0.07)', borderRadius: 8 }}>
             <TrendingUp size={14} color="#1DB954" />
             <span style={{ fontSize: 12.5, color: '#94A3B8' }}>
-              +$0.96 increase this month · <span style={{ color: '#1DB954' }}>+22.9% MoM</span>
+              Historical monthly estimates · update stream counts to reflect current period
             </span>
           </div>
         </div>
 
-        {/* Pie chart */}
+        {/* Pie chart — real data */}
         <div style={{ background: '#1A1A27', border: '1px solid #22223A', borderRadius: 12, padding: '22px' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Revenue Split</div>
-          <PieChart width={220} height={180}>
-            <Pie
-              data={revenueByPlatform}
-              cx={110} cy={85}
-              innerRadius={50}
-              outerRadius={80}
-              dataKey="monthly"
-              nameKey="name"
-            >
-              {revenueByPlatform.map(p => (
-                <Cell key={p.name} fill={p.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{ background: '#111118', border: '1px solid #22223A', borderRadius: 8, fontSize: 12 }}
-              formatter={(v, name) => [`$${Number(v).toFixed(2)}`, name]}
-            />
-          </PieChart>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 4 }}>
-            {revenueByPlatform.map(p => (
-              <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />
-                  <span style={{ color: '#94A3B8' }}>{p.name}</span>
-                </div>
-                <span style={{ color: '#F1F5F9', fontWeight: 600 }}>${p.monthly.toFixed(2)}</span>
+          {platformCards.length > 0 ? (
+            <>
+              <PieChart width={220} height={180}>
+                <Pie
+                  data={platformCards}
+                  cx={110} cy={85}
+                  innerRadius={50}
+                  outerRadius={80}
+                  dataKey="monthly"
+                  nameKey="name"
+                >
+                  {platformCards.map(p => (
+                    <Cell key={p.key} fill={p.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: '#111118', border: '1px solid #22223A', borderRadius: 8, fontSize: 12 }}
+                  formatter={(v, name) => [`$${Number(v).toFixed(2)}`, name]}
+                />
+              </PieChart>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 4 }}>
+                {platformCards.map(p => (
+                  <div key={p.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />
+                      <span style={{ color: '#94A3B8' }}>{p.name}</span>
+                    </div>
+                    <span style={{ color: '#F1F5F9', fontWeight: 600 }}>${p.monthly.toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 12.5, color: '#475569', marginTop: 16 }}>
+              No data yet.
+            </div>
+          )}
         </div>
       </div>
 
