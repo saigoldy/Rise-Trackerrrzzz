@@ -4,7 +4,7 @@
 
 ## Overview
 
-Transform the JuKatha single-artist dashboard into an open multi-user creator platform. Any music creator can sign up, connect their own social media accounts, and see only their own data. Architecture: Supabase (auth + database with RLS) + Vercel API routes (platform API proxy + OAuth flows) + React frontend.
+Transform the Risetrack single-artist dashboard into an open multi-user creator platform. Any music creator can sign up, connect their own social media accounts, and see only their own data. Architecture: Supabase (auth + database with RLS) + Vercel API routes (platform API proxy + OAuth flows) + React frontend.
 
 ---
 

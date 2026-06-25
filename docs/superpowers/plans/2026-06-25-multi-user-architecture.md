@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform the JuKatha single-artist dashboard into a multi-user creator platform where any music artist can sign up, connect their own social media accounts, and see only their own data.
+**Goal:** Transform the Risetrack single-artist dashboard into a multi-user creator platform where any music artist can sign up, connect their own social media accounts, and see only their own data.
 
 **Architecture:** Supabase handles auth (Google + Magic Link) and all user data via Postgres with Row Level Security. Vercel serverless API routes proxy platform APIs (YouTube, Spotify, etc.) per-user by looking up credentials from the DB after verifying the user's JWT. The React frontend uses relative `/api` routes in all environments.
 
@@ -554,7 +554,7 @@ export default function SignIn() {
         padding: '40px 36px', width: '100%', maxWidth: 400,
       }}>
         <div style={{ marginBottom: 32, textAlign: 'center' }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: '#F5A623' }}>JuKatha</h1>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: '#F5A623' }}>Risetrack</h1>
           <p style={{ margin: '8px 0 0', fontSize: 14, color: '#64748B' }}>Artist Dashboard</p>
         </div>
 
@@ -666,7 +666,7 @@ export default function Onboarding() {
         <label style={{ fontSize: 11.5, color: '#64748B', display: 'block', marginBottom: 5 }}>Artist Name *</label>
         <input
           style={inputStyle}
-          placeholder="e.g. JuKatha"
+          placeholder="e.g. Risetrack"
           value={form.artist_name}
           onChange={e => setForm({ ...form, artist_name: e.target.value })}
         />
