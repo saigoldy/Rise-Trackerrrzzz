@@ -17,7 +17,7 @@ app.use(cors({ origin: 'http://localhost:5173', credentials: true }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'jukatha-dev-secret',
+  secret: process.env.SESSION_SECRET || 'risetrack-dev-secret',
   resave: false,
   saveUninitialized: false,
   cookie: { secure: false },
@@ -48,5 +48,5 @@ app.delete('/api/disconnect/:platform', (req, res) => {
 })
 
 app.listen(PORT, () => {
-  console.log(`\n  JuKatha server → http://localhost:${PORT}\n`)
+  console.log(`\n  Risetrack server → http://localhost:${PORT}\n`)
 })

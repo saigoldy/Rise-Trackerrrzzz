@@ -1,7 +1,72 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AlertTriangle, Zap, Info, Minus, TrendingUp, Users } from 'lucide-react'
-import { suggestions, trendRadar, collabRadar } from '../data/mockData'
-import type { Urgency } from '../data/mockData'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+import { useLivePlatformMetrics } from '../hooks/useLiveData'
+import type { PlatformMetric } from '../hooks/useLiveData'
+
+const trendRadar = [
+  { name: 'Amapiano-Afro Fusion', momentum: 94, region: 'East Africa', type: 'Sound' },
+  { name: 'Bongo Flava Remix Wave', momentum: 87, region: 'Tanzania/Kenya', type: 'Style' },
+  { name: 'Afrobeats Drill Crossover', momentum: 79, region: 'Pan-African', type: 'Genre' },
+  { name: '#KampalaSoundChallenge', momentum: 73, region: 'Uganda', type: 'Challenge' },
+  { name: 'Acoustic Afro (stripped)', momentum: 68, region: 'Diaspora', type: 'Style' },
+  { name: 'Street Gospel Vibes', momentum: 61, region: 'Uganda/Rwanda', type: 'Genre' },
+]
+
+const collabRadar = [
+  { name: 'B2C', country: 'Uganda', genre: 'Urban Afrobeats', followers: '420K', compatibility: 88 },
+  { name: 'Feffe Bussi', country: 'Uganda', genre: 'Hip-Hop/Afro', followers: '280K', compatibility: 82 },
+  { name: 'Eddy Kenzo', country: 'Uganda', genre: 'Afropop', followers: '850K', compatibility: 79 },
+  { name: 'Harmonize', country: 'Tanzania', genre: 'Bongo Flava', followers: '4.2M', compatibility: 65 },
+  { name: 'Khaligraph Jones', country: 'Kenya', genre: 'Afro-Hip-Hop', followers: '1.8M', compatibility: 58 },
+]
+
+type Urgency = 'urgent' | 'high' | 'medium' | 'low'
+
+interface Suggestion {
+  id: string
+  urgency: Urgency
+  platform: string
+  title: string
+}
+
+function buildSuggestions(
+  daysSinceLastContent: number,
+  platformCount: number,
+  slateToday: { contentPosted: boolean },
+  platformMetrics: PlatformMetric[],
+): Suggestion[] {
+  const suggestions: Suggestion[] = []
+
+  if (daysSinceLastContent > 3) suggestions.push({
+    id: 'no-content', urgency: 'urgent', platform: 'All',
+    title: `No content posted in ${daysSinceLastContent} days — post today to maintain momentum`,
+  })
+
+  if (!slateToday.contentPosted) suggestions.push({
+    id: 'content-today', urgency: 'high', platform: 'Any',
+    title: 'Content not marked as posted today — log a post to keep your streak',
+  })
+
+  if (platformCount < 3) suggestions.push({
+    id: 'connect-more', urgency: 'medium', platform: 'Connections',
+    title: `Only ${platformCount} platform${platformCount === 1 ? '' : 's'} connected — connect more to track full reach`,
+  })
+
+  const tiktok = platformMetrics.find(p => p.name === 'TikTok')
+  if (tiktok && tiktok.primary.change < 0) suggestions.push({
+    id: 'tiktok-drop', urgency: 'high', platform: 'TikTok',
+    title: 'TikTok followers dropped this week — increase posting frequency',
+  })
+
+  if (suggestions.length === 0) suggestions.push({
+    id: 'keep-going', urgency: 'low', platform: 'General',
+    title: 'All systems green — keep posting consistently to grow',
+  })
+
+  return suggestions
+}
 
 const urgencyConfig: Record<Urgency, { color: string; icon: typeof AlertTriangle; label: string }> = {
   urgent: { color: '#EF4444', icon: AlertTriangle, label: 'Urgent' },
@@ -21,8 +86,33 @@ const platformColors: Record<string, string> = {
 type UrgencyFilter = Urgency | 'all'
 
 export default function Suggestions() {
+  const { user } = useAuth()
+  const { metrics: platformMetrics, sync } = useLivePlatformMetrics()
   const [filter, setFilter] = useState<UrgencyFilter>('all')
-  const [dismissed, setDismissed] = useState<number[]>([])
+  const [dismissed, setDismissed] = useState<string[]>([])
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+
+  useEffect(() => { sync() }, [sync])
+
+  useEffect(() => {
+    if (!user) return
+    async function compute() {
+      const [{ count: pc }, { data: posts }, slateRes] = await Promise.all([
+        supabase.from('platform_connections').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
+        supabase.from('content_posts').select('date').eq('user_id', user!.id).order('date', { ascending: false }).limit(1),
+        supabase.from('daily_slate').select('content_posted').eq('user_id', user!.id).eq('date', new Date().toISOString().split('T')[0]).maybeSingle(),
+      ])
+
+      const lastPost = posts?.[0]?.date
+      const daysSince = lastPost
+        ? Math.floor((Date.now() - new Date(lastPost).getTime()) / 86400000)
+        : 999
+
+      const slateToday = { contentPosted: slateRes.data?.content_posted ?? false }
+      setSuggestions(buildSuggestions(daysSince, pc ?? 0, slateToday, platformMetrics))
+    }
+    compute()
+  }, [user, platformMetrics])
 
   const visible = suggestions.filter(s =>
     (filter === 'all' || s.urgency === filter) && !dismissed.includes(s.id)
@@ -101,32 +191,20 @@ export default function Suggestions() {
                       {s.platform}
                     </span>
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#F1F5F9', marginBottom: 8 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#F1F5F9' }}>
                     {s.title}
                   </div>
-                  <div style={{ fontSize: 13.5, color: '#94A3B8', lineHeight: 1.65 }}>
-                    {s.description}
-                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-                  <button style={{
-                    padding: '8px 16px', borderRadius: 8, fontSize: 12.5, fontWeight: 600,
-                    background: `${color}14`, border: `1px solid ${color}30`,
-                    color, cursor: 'pointer', whiteSpace: 'nowrap',
-                  }}>
-                    {s.action}
-                  </button>
-                  <button
-                    onClick={() => setDismissed(d => [...d, s.id])}
-                    style={{
-                      padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 400,
-                      background: 'transparent', border: '1px solid #22223A',
-                      color: '#475569', cursor: 'pointer',
-                    }}
-                  >
-                    Dismiss
-                  </button>
-                </div>
+                <button
+                  onClick={() => setDismissed(d => [...d, s.id])}
+                  style={{
+                    padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 400,
+                    background: 'transparent', border: '1px solid #22223A',
+                    color: '#475569', cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  Dismiss
+                </button>
               </div>
             </div>
           )

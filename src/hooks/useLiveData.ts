@@ -1,8 +1,47 @@
 import { useState, useEffect, useCallback } from 'react'
-import { platformMetrics } from '../data/mockData'
-import type { PlatformMetric } from '../data/mockData'
+import { useAuth } from '../context/AuthContext'
 
-const API = 'http://localhost:3001/api'
+export interface PlatformMetric {
+  name: string
+  color: string
+  primary: { label: string; value: number; change: number }
+  secondary: { label: string; value: number; change: number; isPercent?: boolean }
+}
+
+const platformMetrics: PlatformMetric[] = [
+  {
+    name: 'TikTok',
+    color: '#FF0050',
+    primary: { label: 'Followers', value: 0, change: 0 },
+    secondary: { label: 'Views (7d)', value: 0, change: 0 },
+  },
+  {
+    name: 'YouTube',
+    color: '#FF0000',
+    primary: { label: 'Subscribers', value: 0, change: 0 },
+    secondary: { label: 'Views (7d)', value: 0, change: 0 },
+  },
+  {
+    name: 'Spotify',
+    color: '#1DB954',
+    primary: { label: 'Monthly Listeners', value: 0, change: 0 },
+    secondary: { label: 'Streams (7d)', value: 0, change: 0 },
+  },
+  {
+    name: 'Audiomack',
+    color: '#FF6B00',
+    primary: { label: 'Plays', value: 0, change: 0 },
+    secondary: { label: 'Followers', value: 0, change: 0 },
+  },
+  {
+    name: 'Instagram',
+    color: '#E1306C',
+    primary: { label: 'Followers', value: 0, change: 0 },
+    secondary: { label: 'Eng. Rate', value: 0, change: 0, isPercent: true },
+  },
+]
+
+const API = '/api'
 
 export interface ConnectionStatus {
   youtube: boolean
@@ -14,6 +53,7 @@ export interface ConnectionStatus {
 
 // Fetch which platforms are configured on the server
 export function useConnectionStatus() {
+  const { session } = useAuth()
   const [status, setStatus] = useState<ConnectionStatus>({
     youtube: false, spotify: false, instagram: false, tiktok: false, audiomack: false,
   })
@@ -22,12 +62,14 @@ export function useConnectionStatus() {
 
   const refresh = useCallback(() => {
     setLoading(true)
-    fetch(`${API}/status`, { credentials: 'include' })
+    fetch(`${API}/status`, {
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+    })
       .then(r => { setServerOnline(r.ok); return r.json() })
       .then(setStatus)
       .catch(() => setServerOnline(false))
       .finally(() => setLoading(false))
-  }, [])
+  }, [session])
 
   useEffect(() => { refresh() }, [refresh])
 
@@ -36,6 +78,7 @@ export function useConnectionStatus() {
 
 // Merge live API data over the mock metrics baseline
 export function useLivePlatformMetrics() {
+  const { session } = useAuth()
   const [metrics, setMetrics] = useState<PlatformMetric[]>(platformMetrics)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState<Date | null>(null)
@@ -48,7 +91,9 @@ export function useLivePlatformMetrics() {
 
     // ── YouTube ──────────────────────────────────────────────────────────────
     try {
-      const r = await fetch(`${API}/youtube/channel`, { credentials: 'include' })
+      const r = await fetch(`${API}/youtube/channel`, {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
       if (r.ok) {
         const d = await r.json()
         const i = updated.findIndex(p => p.name === 'YouTube')
@@ -58,7 +103,9 @@ export function useLivePlatformMetrics() {
 
     // ── Spotify ───────────────────────────────────────────────────────────────
     try {
-      const r = await fetch(`${API}/spotify/artist`, { credentials: 'include' })
+      const r = await fetch(`${API}/spotify/artist`, {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
       if (r.ok) {
         const d = await r.json()
         const i = updated.findIndex(p => p.name === 'Spotify')
@@ -68,7 +115,9 @@ export function useLivePlatformMetrics() {
 
     // ── Instagram ─────────────────────────────────────────────────────────────
     try {
-      const r = await fetch(`${API}/instagram/stats`, { credentials: 'include' })
+      const r = await fetch(`${API}/instagram/stats`, {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
       if (r.ok) {
         const d = await r.json()
         const i = updated.findIndex(p => p.name === 'Instagram')
@@ -78,7 +127,9 @@ export function useLivePlatformMetrics() {
 
     // ── TikTok ────────────────────────────────────────────────────────────────
     try {
-      const r = await fetch(`${API}/tiktok/stats`, { credentials: 'include' })
+      const r = await fetch(`${API}/tiktok/stats`, {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
       if (r.ok) {
         const d = await r.json()
         const i = updated.findIndex(p => p.name === 'TikTok')
@@ -88,7 +139,9 @@ export function useLivePlatformMetrics() {
 
     // ── Audiomack ─────────────────────────────────────────────────────────────
     try {
-      const r = await fetch(`${API}/audiomack/artist`, { credentials: 'include' })
+      const r = await fetch(`${API}/audiomack/artist`, {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
       if (r.ok) {
         const d = await r.json()
         const i = updated.findIndex(p => p.name === 'Audiomack')
@@ -100,7 +153,7 @@ export function useLivePlatformMetrics() {
     setErrors(errs)
     setLastSync(new Date())
     setSyncing(false)
-  }, [])
+  }, [session])
 
   return { metrics, syncing, lastSync, errors, sync }
 }
