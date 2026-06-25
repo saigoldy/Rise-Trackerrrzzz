@@ -62,7 +62,7 @@ export default function Accountability() {
       .select('*')
       .eq('user_id', user.id)
       .eq('date', today)
-      .single()
+      .maybeSingle()
     if (data) setSlate(fromDb(data))
   }, [user, today])
 

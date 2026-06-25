@@ -65,7 +65,7 @@ export default function Revenue() {
       (data ?? []).map(r => ({
         platform: r.platform,
         streams: r.streams,
-        title: (r.tracks as { title: string }).title,
+        title: ((r.tracks as unknown as { title: string } | null)?.title) ?? '',
       }))
     )
     setLoading(false)

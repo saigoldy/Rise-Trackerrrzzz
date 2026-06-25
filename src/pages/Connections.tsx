@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { CheckCircle2, XCircle, Link2, Unlink, AlertCircle, RefreshCw } from 'lucide-react'
+import { CheckCircle2, Link2, Unlink, AlertCircle, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 

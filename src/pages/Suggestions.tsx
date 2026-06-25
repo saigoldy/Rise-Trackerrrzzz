@@ -100,7 +100,7 @@ export default function Suggestions() {
       const [{ count: pc }, { data: posts }, slateRes] = await Promise.all([
         supabase.from('platform_connections').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
         supabase.from('content_posts').select('date').eq('user_id', user!.id).order('date', { ascending: false }).limit(1),
-        supabase.from('daily_slate').select('content_posted').eq('user_id', user!.id).eq('date', new Date().toISOString().split('T')[0]).single(),
+        supabase.from('daily_slate').select('content_posted').eq('user_id', user!.id).eq('date', new Date().toISOString().split('T')[0]).maybeSingle(),
       ])
 
       const lastPost = posts?.[0]?.date

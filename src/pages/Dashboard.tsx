@@ -22,7 +22,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return
     const today = new Date().toISOString().split('T')[0]
-    supabase.from('daily_slate').select('*').eq('user_id', user.id).eq('date', today).single()
+    supabase.from('daily_slate').select('*').eq('user_id', user.id).eq('date', today).maybeSingle()
       .then(({ data }) => {
         if (data) setSlate({
           gym: data.gym,
