@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Link2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -50,9 +50,13 @@ const PLATFORM_META: Record<string, {
 const PLATFORMS = ['youtube', 'spotify', 'audiomack', 'instagram', 'tiktok']
 
 export default function Onboarding() {
-  const { user, session, refreshOnboardingStatus } = useAuth()
+  const { user, session, loading, refreshOnboardingStatus } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
+
+  useEffect(() => {
+    if (!loading && !user) navigate('/signin', { replace: true })
+  }, [loading, user, navigate])
   const [profile, setProfile] = useState({ artist_name: '', location: '', genre: '' })
   const [profileError, setProfileError] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
