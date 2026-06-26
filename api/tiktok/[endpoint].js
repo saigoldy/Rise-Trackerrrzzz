@@ -39,7 +39,7 @@ async function callback(req, res) {
   const protocol = host.includes('localhost') ? 'http' : 'https'
   const redirect = `${protocol}://${host}/api/tiktok/callback`
 
-  const tokenRes = await fetch('https://open-api.tiktok.com/oauth/access_token/', {
+  const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({

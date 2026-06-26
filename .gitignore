@@ -24,5 +24,6 @@ dist-ssr
 *.sw?
 
 # Server secrets — never commit these
+/.env
 server/.env
 server/.tokens.json
