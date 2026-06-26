@@ -28,6 +28,7 @@ async function videos(req, res, creds) {
   statsUrl.searchParams.set('key', creds.api_key)
 
   const statsRes = await fetch(statsUrl.toString())
+  if (!statsRes.ok) return res.status(statsRes.status).json({ error: 'YouTube stats error' })
   const statsData = await statsRes.json()
 
   res.json((statsData.items ?? []).map(v => ({
