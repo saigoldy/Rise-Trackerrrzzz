@@ -73,26 +73,34 @@ export default function Onboarding() {
 
   const saveProfile = async () => {
     if (!profile.artist_name.trim()) { setProfileError('Artist name is required'); return }
+    if (!user) return
     setSavingProfile(true)
-    const { error } = await supabase.from('profiles')
-      .update({ artist_name: profile.artist_name, location: profile.location, genre: profile.genre })
-      .eq('id', user!.id)
-    setSavingProfile(false)
-    if (error) { setProfileError(error.message); return }
-    setStep(2)
+    try {
+      const { error } = await supabase.from('profiles')
+        .update({ artist_name: profile.artist_name, location: profile.location, genre: profile.genre })
+        .eq('id', user.id)
+      if (error) { setProfileError(error.message); return }
+      setStep(2)
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   const savePlatform = async (platform: string) => {
     const fields = PLATFORM_META[platform].fields
     const vals = platformInputs[platform] ?? {}
     if (fields.some(f => !vals[f.key]?.trim())) return
+    if (!user) return
     setSavingPlatform(s => ({ ...s, [platform]: true }))
-    const creds = Object.fromEntries(fields.map(f => [f.key, vals[f.key].trim()]))
-    const { error } = await supabase.from('platform_connections').upsert({
-      user_id: user!.id, platform, credentials: creds, updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,platform' })
-    setSavingPlatform(s => ({ ...s, [platform]: false }))
-    if (!error) setSavedPlatforms(s => ({ ...s, [platform]: true }))
+    try {
+      const { error } = await supabase.from('platform_connections').upsert({
+        user_id: user.id, platform, credentials: Object.fromEntries(fields.map(f => [f.key, vals[f.key].trim()])),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,platform' })
+      if (!error) setSavedPlatforms(s => ({ ...s, [platform]: true }))
+    } finally {
+      setSavingPlatform(s => ({ ...s, [platform]: false }))
+    }
   }
 
   const connectOAuth = (platform: string) => {
