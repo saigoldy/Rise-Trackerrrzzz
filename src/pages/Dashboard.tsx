@@ -1,23 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { TrendingUp, TrendingDown, ChevronRight, CheckCircle2, Circle } from 'lucide-react'
+import { ChevronRight, CheckCircle2, Circle } from 'lucide-react'
 import MomentumGauge from '../components/MomentumGauge'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { useLivePlatformMetrics } from '../hooks/useLiveData'
-
-const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n)
+import { useSnapshots } from '../hooks/useSnapshots'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { metrics: platformMetrics, sync } = useLivePlatformMetrics()
+  const { latest, refreshing, refresh } = useSnapshots()
   const [slate, setSlate] = useState({
     gym: false, salonDuty: false, study: false, contentPosted: false, verseWritten: false,
   })
-
-  useEffect(() => { sync() }, [sync])
 
   useEffect(() => {
     if (!user) return
@@ -58,11 +54,17 @@ export default function Dashboard() {
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#F1F5F9' }}>Dashboard</h1>
           <p style={{ margin: '3px 0 0', fontSize: 13, color: '#475569' }}>{today}</p>
         </div>
-        <div style={{
-          background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)',
-          borderRadius: 8, padding: '7px 14px', fontSize: 12.5, color: '#F5A623', fontWeight: 600,
-        }}>
-          Week 16 of Plan
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)',
+            borderRadius: 8, padding: '7px 14px', fontSize: 12.5, color: '#F5A623', fontWeight: 600,
+          }}>
+            Week 16 of Plan
+          </div>
+          <button onClick={refresh} disabled={refreshing}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748B', background: 'none', border: '1px solid #22223A', borderRadius: 7, padding: '7px 12px', cursor: 'pointer' }}>
+            {refreshing ? 'Refreshing…' : '↻ Refresh Stats'}
+          </button>
         </div>
       </div>
 
@@ -118,37 +120,36 @@ export default function Dashboard() {
 
       {/* ── Row 2: Platform cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 16 }}>
-        {platformMetrics.map(p => (
-          <div key={p.name} style={{
-            background: '#1A1A27', border: '1px solid #22223A', borderRadius: 12, padding: 16,
-            borderTop: `2px solid ${p.color}`,
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: p.color, letterSpacing: 0.3 }}>{p.name}</span>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', background: p.color, boxShadow: `0 0 6px ${p.color}88` }} />
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#F1F5F9', lineHeight: 1 }}>
-              {fmt(p.primary.value)}{p.secondary.isPercent && p.name === 'Instagram' ? '' : ''}
-            </div>
-            <div style={{ fontSize: 11, color: '#64748B', margin: '3px 0 8px' }}>{p.primary.label}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
-              {p.primary.change >= 0
-                ? <TrendingUp size={11} color="#1DB954" />
-                : <TrendingDown size={11} color="#EF4444" />
-              }
-              <span style={{ color: p.primary.change >= 0 ? '#1DB954' : '#EF4444' }}>
-                {p.primary.change >= 0 ? '+' : ''}{p.primary.change}
-              </span>
-              <span style={{ color: '#475569' }}>/ wk</span>
-            </div>
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #22223A' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#94A3B8' }}>
-                {p.secondary.isPercent ? `${p.secondary.value}%` : fmt(p.secondary.value)}
+        {['tiktok', 'youtube', 'spotify', 'audiomack', 'instagram'].map(platform => {
+          const snap = latest[platform]
+          const color = ({ tiktok: '#FF0050', youtube: '#FF0000', spotify: '#1DB954', audiomack: '#FF6B00', instagram: '#E1306C' } as Record<string, string>)[platform]
+          const label = ({ tiktok: 'TikTok', youtube: 'YouTube', spotify: 'Spotify', audiomack: 'Audiomack', instagram: 'Instagram' } as Record<string, string>)[platform]
+          const primary = snap ? (
+            platform === 'youtube' ? snap.metrics.subscribers :
+            platform === 'spotify' ? snap.metrics.followers :
+            platform === 'audiomack' ? snap.metrics.plays :
+            snap.metrics.followers
+          ) : null
+
+          return (
+            <div key={platform} style={{ background: '#1A1A27', border: `1px solid ${snap ? color + '33' : '#22223A'}`, borderRadius: 12, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color }}>{label}</span>
               </div>
-              <div style={{ fontSize: 10.5, color: '#475569' }}>{p.secondary.label}</div>
+              {snap ? (
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#F1F5F9' }}>
+                  {primary != null ? (primary >= 1000 ? `${(primary / 1000).toFixed(1)}K` : String(primary)) : '—'}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: '#475569' }}>Not connected</div>
+              )}
+              {snap && <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>
+                Updated {new Date(snap.fetched_at).toLocaleDateString()}
+              </div>}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* ── Row 3: Chart + Suggestions ── */}

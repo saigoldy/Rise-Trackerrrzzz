@@ -3,21 +3,8 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { useLivePlatformMetrics } from '../hooks/useLiveData'
+import { useSnapshots } from '../hooks/useSnapshots'
 
-const seed = [0, 8, 4, 12, 6, -3, 9, 5, 14, 3, 7, 11, -2, 6, 10, 4, 8, 13, 2, 9, 5, 7, 11, 3, 8, 6, 12, 4, 9, 7]
-const monthlyData = seed.map((delta, i) => {
-  const d = new Date('2026-04-27')
-  d.setDate(d.getDate() + i)
-  return {
-    date: `${d.getMonth() + 1}/${d.getDate()}`,
-    tiktok: Math.round(700 + i * 5 + delta * 3),
-    youtube: Math.round(280 + i * 1.4 + delta),
-    spotify: Math.round(900 + i * 10 + delta * 4),
-    audiomack: Math.round(1600 + i * 17 + delta * 5),
-    instagram: Math.round(1200 + i * 8.5 + delta * 3),
-  }
-})
 
 const fanGeography = [
   { country: 'Uganda', flag: '🇺🇬', listeners: 5400, percentage: 42 },
@@ -58,10 +45,17 @@ const metricLabels: Record<PlatformKey, string> = {
 }
 
 export default function Analytics() {
-  const { metrics: platformMetrics } = useLivePlatformMetrics()
+  const { history } = useSnapshots()
   const [activePlatform, setActivePlatform] = useState<PlatformKey>('tiktok')
   const platform = platforms.find(p => p.key === activePlatform)!
-  const currentMetric = platformMetrics.find(p => p.name === platform.label)
+
+  const trendData = (history[activePlatform] ?? [])
+    .slice()
+    .reverse()
+    .map(snap => ({
+      date: new Date(snap.fetched_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: snap.metrics.followers ?? snap.metrics.subscribers ?? snap.metrics.plays ?? 0,
+    }))
 
   return (
     <div style={{ padding: '28px 28px 48px', color: '#F1F5F9', maxWidth: 1380 }}>
@@ -98,21 +92,17 @@ export default function Analytics() {
             <div style={{ fontSize: 14, fontWeight: 600 }}>
               {platform.label} — {metricLabels[activePlatform]} (30 days)
             </div>
-            {currentMetric && (
+            {trendData.length > 0 && (
               <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
-                Current: <span style={{ color: platform.color, fontWeight: 600 }}>
-                  {currentMetric.primary.value.toLocaleString()}
-                </span>
-                &nbsp;·&nbsp;
-                <span style={{ color: currentMetric.primary.change >= 0 ? '#1DB954' : '#EF4444' }}>
-                  {currentMetric.primary.change >= 0 ? '+' : ''}{currentMetric.primary.change} this week
+                Latest: <span style={{ color: platform.color, fontWeight: 600 }}>
+                  {trendData[trendData.length - 1].value.toLocaleString()}
                 </span>
               </div>
             )}
           </div>
         </div>
         <ResponsiveContainer width="100%" height={260}>
-          <AreaChart data={monthlyData} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+          <AreaChart data={trendData} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
             <defs>
               <linearGradient id={`grad-${activePlatform}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={platform.color} stopOpacity={0.25} />
@@ -133,7 +123,7 @@ export default function Analytics() {
             />
             <Area
               type="monotone"
-              dataKey={activePlatform}
+              dataKey="value"
               name={metricLabels[activePlatform]}
               stroke={platform.color}
               strokeWidth={2}
